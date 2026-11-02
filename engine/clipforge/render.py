@@ -1,7 +1,9 @@
 """Compile a project (transcript + edit + look + brand) into one ffmpeg run."""
 from __future__ import annotations
 
+import functools
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -27,6 +29,18 @@ POPUP_SECONDS = 1.8
 
 class RenderError(RuntimeError):
     pass
+
+
+@functools.lru_cache(maxsize=1)
+def ffmpeg_major() -> int:
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-version"], capture_output=True, text=True).stdout
+    m = re.search(r"ffmpeg version n?(\d+)", out)
+    return int(m.group(1)) if m else 6
+
+
+def graph_args(path: str) -> list[str]:
+    """ffmpeg 7 replaced -filter_complex_script with -/filter_complex (read the option value from a file)."""
+    return ["-/filter_complex", path] if ffmpeg_major() >= 7 else ["-filter_complex_script", path]
 
 
 def timeline_for(p: Project) -> Timeline:
@@ -307,7 +321,7 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
     (work / "graph.txt").write_text(";\n".join(fc))
     out = p.path("renders", f"{quality}.mp4")
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error", "-progress", "pipe:1", "-nostats", *args,
-           "-filter_complex_script", "graph.txt", "-map", "[vout]", "-map", "[aout]",
+           *graph_args("graph.txt"), "-map", "[vout]", "-map", "[aout]",
            "-c:v", "libx264", "-preset", preset, "-crf", str(crf), "-pix_fmt", "yuv420p", "-r", str(FPS),
            "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", "-t", str(total), str(out.resolve())]
     proc = subprocess.Popen(cmd, cwd=work, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
