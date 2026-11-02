@@ -7,6 +7,7 @@ A local-first macOS studio that turns long videos into shorts and carousels. It 
 
 | Start here | |
 |---|---|
+| **[Download ClipForge for Mac](https://github.com/ebenezar15/Video/releases/download/mac-latest/ClipForge.zip)** | Latest tested build (macOS 14+). Install notes in [`macos/README.md`](macos/README.md) |
 | [`macos/README.md`](macos/README.md) | Native Mac app (SwiftUI): install, use, build |
 | [`engine/README.md`](engine/README.md) | The engine: install, Studio, Claude integration, features |
 | [`docs/MCP.md`](docs/MCP.md) | Connect ClipForge to Claude Desktop / Claude Code |

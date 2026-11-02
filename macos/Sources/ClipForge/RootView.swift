@@ -16,6 +16,7 @@ struct RootView: View {
             case .failed(let msg): FailedView(message: msg)
             }
         }
+        .background(Color(nsColor: .windowBackgroundColor))
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 Text(t)

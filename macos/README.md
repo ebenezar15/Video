@@ -8,9 +8,16 @@ so every feature works the same in the app, in the Studio web page, and in Claud
 
 Requirements: macOS 14 or later, ffmpeg and Python 3.10+ (`brew install ffmpeg python`).
 
-1. Download `ClipForge.zip` from the latest **macOS app** workflow run (Actions tab), or build it yourself (below).
-2. Unzip and move **ClipForge.app** to Applications. The build is ad-hoc signed, so the first time right-click →
-   **Open**.
+1. Download **[ClipForge.zip](https://github.com/ebenezar15/Video/releases/download/mac-latest/ClipForge.zip)**
+   (always the latest build that passed CI), or build it yourself (below).
+2. Unzip and move **ClipForge.app** to Applications. The build is ad-hoc signed, not notarised, so macOS blocks the
+   first launch. Run once in Terminal:
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/ClipForge.app
+   ```
+
+   or open it, then go to System Settings → Privacy & Security → **Open Anyway**.
 3. On first launch, press **Install Engine**. ClipForge creates a private Python environment in
    `~/Library/Application Support/ClipForge` and installs the engine bundled inside the app. This takes a few
    minutes once.

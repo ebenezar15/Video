@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 — Mac app ships (2026-11-02)
+- Downloadable build: https://github.com/ebenezar15/Video/releases/download/mac-latest/ClipForge.zip (CI on macOS 14
+  builds, unit-tests, self-tests against the real engine, renders every screen, then publishes).
+- Fixes found on macOS: SwiftUI views made main-actor; AVPlayerView replaces SwiftUI VideoPlayer (crashed in SwiftPM
+  builds); ffmpeg 7+ `-/filter_complex`; Pillow captions when ffmpeg lacks libass (Homebrew); copy fonts by contents
+  (protected system fonts).
+
 ## 0.3.0 — Native Mac app (2026-11-02)
 - `macos/`: SwiftUI app over the engine. Sidebar library, drag-and-drop import, Cut/Style/Sound/Finish, Ask Claude
   with per-change review, AVKit preview, brand editor, Settings (Keychain keys, one-click Claude Desktop MCP setup).
