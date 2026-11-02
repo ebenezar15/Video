@@ -120,7 +120,7 @@ class Project:
         (d / "media").mkdir(parents=True)
         dest = d / "media" / ("source" + video.suffix.lower())
         if copy_media:
-            shutil.copy2(video, dest)
+            shutil.copyfile(video, dest)
         else:
             dest.symlink_to(video)
         meta = {"id": pid, "name": name or video.stem, "source": str(dest.relative_to(d)), "shot_type": shot_type,

@@ -81,7 +81,7 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
         shutil.rmtree(work)
     (work / "fonts").mkdir(parents=True)
     for f in {look["title_font_file"], look["caption_font_file"]}:
-        shutil.copy2(f, work / "fonts" / Path(f).name)
+        shutil.copyfile(f, work / "fonts" / Path(f).name)  # contents only: copy2 fails on protected macOS system fonts
 
     args: list[str] = []
     fc: list[str] = []
