@@ -1,0 +1,69 @@
+name: macOS app
+
+on:
+  push:
+    paths: ["macos/**", "engine/**", ".github/workflows/macos.yml"]
+  pull_request:
+    paths: ["macos/**", "engine/**", ".github/workflows/macos.yml"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          brew install ffmpeg
+          ffmpeg -version | head -1
+          swift --version
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install engine
+        run: pip install -e "engine[dev,faces]"
+
+      - name: Engine tests
+        working-directory: engine
+        run: python -m pytest -q
+
+      - name: Swift tests (ClipForgeCore)
+        working-directory: macos
+        run: swift test
+
+      - name: Build ClipForge.app
+        working-directory: macos
+        run: ./scripts/build-app.sh
+
+      - name: App self-test (real engine, full edit, screenshots)
+        working-directory: macos
+        run: |
+          python ../engine/tests/fixtures/make_fixture.py "$RUNNER_TEMP/fx"
+          CLIPFORGE_BIN="$(which clipforge)" \
+          CLIPFORGE_SELFTEST_VIDEO="$RUNNER_TEMP/fx/talk.mp4" \
+          CLIPFORGE_SELFTEST_WORDS="$RUNNER_TEMP/fx/talk.words.json" \
+            ./build/ClipForge.app/Contents/MacOS/ClipForge --selftest --screenshots build/screenshots
+
+      - name: Screenshots in the log (for review without downloading artifacts)
+        if: always()
+        working-directory: macos/build
+        run: |
+          for f in screenshots/*.png; do
+            [ -f "$f" ] || continue
+            sips -Z 1000 -s format jpeg -s formatOptions 55 "$f" --out "${f%.png}.jpg" >/dev/null
+            echo "=====BEGIN $(basename "${f%.png}")====="
+            base64 -i "${f%.png}.jpg" | fold -w 160
+            echo "=====END $(basename "${f%.png}")====="
+          done
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ClipForge-macOS
+          path: |
+            macos/build/ClipForge.zip
+            macos/build/screenshots

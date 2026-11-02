@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from . import __version__, audio_gen, commands, graphics, planner, recipes, render as render_mod, repurpose
 from .effects import catalog
 from .looks import LOOKS
-from .project import SHOT_TYPES, Project, home
+from .project import SHOT_TYPES, Project, home, load_brand
 from .transcript import import_transcript, transcribe
 
 STATIC = Path(__file__).parent / "static"
@@ -146,6 +146,8 @@ class Handler(BaseHTTPRequestHandler):
                                    "graphics": graphics.catalog(), "aspects": list(recipes.ASPECTS), "sfx": audio_gen.SFX})
             if parts == ["api", "projects"]:
                 return self._json(Project.list())
+            if parts == ["api", "brand"]:
+                return self._json(load_brand())
             if len(parts) == 3 and parts[:2] == ["api", "projects"]:
                 return self._json(commands.state(Project.load(parts[2])))
             if len(parts) == 3 and parts[:2] == ["api", "jobs"]:
@@ -237,8 +239,8 @@ def serve(port: int = 8765, host: str = "127.0.0.1") -> ThreadingHTTPServer:
 
 
 def main(port: int = 8765) -> None:
-    httpd = serve(port)
-    print(f"ClipForge Studio on http://127.0.0.1:{port}  (projects in {home()})")
+    httpd = serve(port)  # port 0 picks a free port; the Mac app reads it from this line
+    print(f"ClipForge Studio on http://127.0.0.1:{httpd.server_address[1]}  (projects in {home()})", flush=True)
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
