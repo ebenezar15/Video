@@ -8,6 +8,11 @@ on:
 permissions:
   contents: write
 
+# a newer push supersedes an older run, so two runs never race to replace the release
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   engine:
     runs-on: ubuntu-latest
