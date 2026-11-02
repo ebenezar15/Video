@@ -83,7 +83,6 @@ jobs:
             macos/build/screenshots
 
       - name: Publish download (release "mac-latest")
-        if: matrix.os == 'macos-15' || vars.PUBLISH_FROM == matrix.os
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -91,4 +90,4 @@ jobs:
           gh release create mac-latest macos/build/ClipForge.zip \
             --prerelease --target "$GITHUB_SHA" \
             --title "ClipForge for Mac (latest build)" \
-            --notes "Built from ${GITHUB_SHA::7} on macOS 15. Unzip, move ClipForge.app to Applications, right-click → Open the first time (ad-hoc signed). Needs macOS 14+, plus ffmpeg and Python 3.10+ (brew install ffmpeg python). See macos/README.md."
+            --notes "Built from ${GITHUB_SHA::7} on ${{ matrix.os }}. Unzip, move ClipForge.app to Applications, right-click → Open the first time (ad-hoc signed). Needs macOS 14+, plus ffmpeg and Python 3.10+ (brew install ffmpeg python). See macos/README.md."
