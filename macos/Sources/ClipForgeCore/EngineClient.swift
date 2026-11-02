@@ -46,17 +46,17 @@ public struct EngineClient: Sendable {
         return data
     }
 
-    func get<T: Decodable>(_ path: String, as: T.Type = T.self) async throws -> T {
+    func get<T: Decodable>(_ path: String, _ type: T.Type = T.self) async throws -> T {
         try Self.decoder.decode(T.self, from: try await request(path))
     }
 
-    func post<T: Decodable>(_ path: String, json: JSONValue = [:], as: T.Type = T.self) async throws -> T {
+    func post<T: Decodable>(_ path: String, json: JSONValue = [:], _ type: T.Type = T.self) async throws -> T {
         let body = try JSONEncoder().encode(json)
         return try Self.decoder.decode(T.self, from: try await request(path, method: "POST", body: body,
                                                                          headers: ["Content-Type": "application/json"]))
     }
 
-    func upload<T: Decodable>(_ path: String, file: URL, as: T.Type = T.self) async throws -> T {
+    func upload<T: Decodable>(_ path: String, file: URL, _ type: T.Type = T.self) async throws -> T {
         let data = try Data(contentsOf: file)
         let name = file.lastPathComponent.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "upload"
         return try Self.decoder.decode(T.self, from: try await request(path, method: "POST", body: data,

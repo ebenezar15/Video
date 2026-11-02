@@ -99,7 +99,7 @@ enum SelfTest {
                 await capture(client: c, meta: meta, state: st, to: URL(fileURLWithPath: dir))
             }
         } catch {
-            check("self test ran without errors", false, error.localizedDescription + "\n" + engine.log.suffix(2000))
+            check("self test ran without errors", false, error.localizedDescription + "\n" + String(engine.log.suffix(2000)))
         }
         print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1

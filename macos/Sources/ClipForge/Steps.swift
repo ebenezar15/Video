@@ -248,8 +248,7 @@ struct StyleView: View {
                 }
                 ForEach(Array((st?.graphics ?? []).enumerated()), id: \.offset) { _, g in
                     ItemRow(title: meta?.graphics.first { $0.type == g["type"]?.string }?.label ?? (g["type"]?.string ?? ""),
-                            detail: [g["title"], g["text"], g["value"]].compactMap { $0?.string }.first.map { "\($0) · " } ?? ""
-                                + (g["type"]?.string == "end_card" ? "at the end" : "at “\(model.wordText(g["word_id"]?.int))”")) {
+                            detail: graphicDetail(g)) {
                         Task { await model.apply(["op": "remove_graphic", "graphic_id": g["id"] ?? .null]) }
                     }
                 }
@@ -284,6 +283,12 @@ struct StyleView: View {
             pace = st?.pace ?? "balanced"
         }
         .onChange(of: graphicType) { _, _ in prefill() }
+    }
+
+    func graphicDetail(_ g: [String: JSONValue]) -> String {
+        let what = [g["title"], g["text"], g["value"]].compactMap { $0?.string }.first.map { "\($0) · " } ?? ""
+        let place = g["type"]?.string == "end_card" ? "at the end" : "at “\(model.wordText(g["word_id"]?.int))”"
+        return what + place
     }
 
     var pickedHint: String {

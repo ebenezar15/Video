@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 — Native Mac app (2026-11-02)
+- `macos/`: SwiftUI app over the engine. Sidebar library, drag-and-drop import, Cut/Style/Sound/Finish, Ask Claude
+  with per-change review, AVKit preview, brand editor, Settings (Keychain keys, one-click Claude Desktop MCP setup).
+- First-run engine install into a private venv from the source bundled in the app; engine runs on a free port.
+- `--selftest` runs a full edit against the real engine and renders every screen to PNG; CI on macOS builds the app.
+
 ## 0.2.0 — Claude-driven engine (2026-11-02)
 - Redesign from two reference videos (`docs/REFERENCE_VIDEOS.md`): Claude edits, the engine renders.
 - `engine/`: Python + ffmpeg engine with Studio web app, MCP server, CLI and Claude Code skill.

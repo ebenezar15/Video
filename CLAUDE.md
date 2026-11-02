@@ -1,7 +1,7 @@
 # ClipForge — notes for Claude Code
 
 Claude-driven short-form video studio. **Status: v0.2.** The working engine is in `engine/` (Python + ffmpeg: Studio web
-app, MCP server, CLI, Claude Code skill). A native macOS shell is planned on top of it.
+app, MCP server, CLI, Claude Code skill). The native SwiftUI app in `macos/` is a client of the engine's local HTTP API.
 
 ## Engine map (`engine/clipforge/`)
 - `commands.py`: every edit op (validated, undoable). Add new features as ops here first.
@@ -22,6 +22,7 @@ app, MCP server, CLI, Claude Code skill). A native macOS shell is planned on top
 - Test: `cd engine && python -m pytest` (renders real video; ~1 min)
 - Studio: `clipforge studio` → http://127.0.0.1:8765
 - MCP: `clipforge mcp` (see `docs/MCP.md`)
+- Mac app (macOS only): `cd macos && swift test && ./scripts/build-app.sh`; CI: `.github/workflows/macos.yml`
 - Design prototype: open `prototype/index.html`
 
 ## Conventions
