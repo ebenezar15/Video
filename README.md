@@ -2,11 +2,14 @@
 
 A local-first macOS studio that turns long videos into shorts and carousels. It checks that each clip makes sense on its own, explains why each clip should work, and learns from your real results.
 
-**Status:** design package for approval. The Swift build starts at Phase 1 once the open decisions are settled.
+**Status:** v0.2. A working, Claude-driven editing engine is in [`engine/`](engine/README.md): Studio web app,
+MCP server for Claude Desktop/Code, CLI. Redesigned from two reference videos ([`docs/REFERENCE_VIDEOS.md`](docs/REFERENCE_VIDEOS.md)).
 
 | Start here | |
 |---|---|
-| [`prototype/index.html`](prototype/index.html) | Clickable UI prototype. Open it in a browser. |
+| [`engine/README.md`](engine/README.md) | The engine: install, Studio, Claude integration, features |
+| [`docs/MCP.md`](docs/MCP.md) | Connect ClipForge to Claude Desktop / Claude Code |
+| [`prototype/index.html`](prototype/index.html) | Original clickable design prototype |
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Personas, signature features, screens |
 | [`docs/RESEARCH.md`](docs/RESEARCH.md) | Market research and the gaps ClipForge targets |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Modules, data flow, EDL, provider protocols |

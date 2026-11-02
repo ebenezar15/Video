@@ -1,5 +1,15 @@
 # ClipForge — Roadmap
 
+## Status (v0.2, engine)
+
+Done in `engine/`, ahead of the native app: auto-cut and text editing (P3-5, P5-4), captions with animation (P4),
+pop-ups and auto-reframe by crop/blur (part of P5-3), Claude via MCP and API (P6-2, P7-2, P7-3 as accept/reject per
+change), effects (P8-1, P8-2), music, ducking, loudness, SFX, beat-snapped pacing (P9), B-roll from library and
+Pexels (P10-1, P10-2), looks, brand kit and recipes (P11-1, P11-3), post kit (P12-1, P12-2), MCP server and CLI
+(P13-1, P13-2), pre-flight (P13-4).
+
+Next: native SwiftUI shell over the engine, Moment Board, Taste Loop, Hook Lab variants, generative B-roll, publishing.
+
 Each phase ends with a runnable app, passing tests, and a demo note in `CHANGELOG.md`. Ticket IDs: `P<phase>-<n>`. ★ marks a signature feature from `PRODUCT.md`.
 
 ## Phase 1 — Foundation

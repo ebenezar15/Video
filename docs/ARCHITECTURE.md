@@ -1,6 +1,25 @@
 # ClipForge — Architecture
 
-Status: **Draft v1 for approval.** No production code has been written yet.
+## v0.2 redesign: Claude-driven engine (implemented)
+
+After studying two reference videos (see `REFERENCE_VIDEOS.md`), ClipForge was redesigned around one idea: **Claude
+is the editor, the engine renders.** The engine lives in `engine/` and runs today on macOS and Linux:
+
+| Layer | Implementation |
+|---|---|
+| Edit model | `commands.py`: ~35 validated, undoable ops over `edit.json`; the only way state changes |
+| Claude, subscription path | `mcp_server.py`: MCP tools for Claude Desktop / Code, plus the `clipforge-editor` skill |
+| Claude, API path | `planner.py`: `messages.parse` with a Pydantic plan schema, server-side refusal fallbacks; proposals are accepted per change in the Studio |
+| UI | `server.py` + `static/studio.html`: local Studio (Cut → Style → Sound → Finish, Ask Claude) |
+| Render | `render.py`: one ffmpeg pass (trims, reframe, camera, B-roll, grade, effects, pop-ups, Pillow motion-graphic sequences, libass captions; voice + ducked music + SFX, loudnorm) |
+| Intelligence | `autocut`, `popups` (+ OpenCV faces), `broll`, `recipes` (pacing, pre-flight), `audio_gen` (music + SFX) |
+
+The native SwiftUI app described below remains the long-term shell. It will call the same engine (CLI or MCP)
+instead of re-implementing it, so the plan below is kept for reference.
+
+---
+
+Status of the original plan below: **Draft v1.**
 
 ## 1. Principles
 1. **One contract.** `TimelineDocument` (the EDL) is read and written by the UI, templates, AI agent, CLI and MCP. LLMs emit **typed commands**, never code.
