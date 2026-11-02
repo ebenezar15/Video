@@ -2,6 +2,7 @@ import ClipForgeCore
 import SwiftUI
 import UniformTypeIdentifiers
 
+@MainActor
 struct RootView: View {
     @Environment(AppModel.self) private var model
 
@@ -29,6 +30,7 @@ struct RootView: View {
     }
 }
 
+@MainActor
 struct MainSplit: View {
     @Environment(AppModel.self) private var model
 
@@ -74,6 +76,7 @@ struct MainSplit: View {
     }
 }
 
+@MainActor
 struct HomeView: View {
     @Environment(AppModel.self) private var model
     @State private var shot = "on_camera"
@@ -136,6 +139,7 @@ struct HomeView: View {
     }
 }
 
+@MainActor
 struct SetupView: View {
     @Environment(AppModel.self) private var model
     var reason: String
@@ -158,6 +162,7 @@ struct SetupView: View {
     }
 }
 
+@MainActor
 struct InstallView: View {
     @Environment(AppModel.self) private var model
 
@@ -176,6 +181,7 @@ struct InstallView: View {
     }
 }
 
+@MainActor
 struct FailedView: View {
     @Environment(AppModel.self) private var model
     var message: String
@@ -197,6 +203,7 @@ struct FailedView: View {
     }
 }
 
+@MainActor
 struct BrandView: View {
     @Environment(AppModel.self) private var model
     @State private var name = ""

@@ -2,6 +2,7 @@ import AVKit
 import ClipForgeCore
 import SwiftUI
 
+@MainActor
 struct ProjectView: View {
     @Environment(AppModel.self) private var model
     @State private var prompt = ""
@@ -78,6 +79,7 @@ struct ProjectView: View {
     }
 }
 
+@MainActor
 struct PlayerPane: View {
     @Environment(AppModel.self) private var model
     @State private var player = AVPlayer()
@@ -134,6 +136,7 @@ struct PlayerPane: View {
     }
 }
 
+@MainActor
 struct PlanSheet: View {
     @Environment(AppModel.self) private var model
 

@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-14]
+        os: [macos-14]  # macos-15 runners never picked up jobs for this repo
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:

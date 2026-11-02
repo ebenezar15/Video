@@ -2,6 +2,7 @@ import AppKit
 import ClipForgeCore
 import SwiftUI
 
+@MainActor
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @State private var binary = ""

@@ -101,6 +101,7 @@ struct FlowLayout: Layout {
 
 // MARK: building blocks
 
+@MainActor
 struct Panel<Content: View>: View {
     var title: String
     var subtitle: String? = nil
@@ -124,6 +125,7 @@ struct Panel<Content: View>: View {
     }
 }
 
+@MainActor
 struct Tile: View {
     var title: String
     var about: String
@@ -146,6 +148,7 @@ struct Tile: View {
     }
 }
 
+@MainActor
 struct ItemRow: View {
     var title: String
     var detail: String
@@ -163,6 +166,7 @@ struct ItemRow: View {
     }
 }
 
+@MainActor
 struct Stat: View {
     var label: String
     var value: String
@@ -175,6 +179,7 @@ struct Stat: View {
 }
 
 /// One word of the transcript, clickable.
+@MainActor
 struct WordChip: View {
     let word: Word
     var picked = false

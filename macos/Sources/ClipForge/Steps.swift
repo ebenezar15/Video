@@ -7,6 +7,7 @@ import UniformTypeIdentifiers
 // MARK: transcript
 
 /// The video as a page of words, one sentence per row.
+@MainActor
 struct TranscriptView: View {
     @Environment(AppModel.self) private var model
     enum Mode { case cut, pick }
@@ -54,6 +55,7 @@ struct TranscriptView: View {
 
 // MARK: 01 Cut
 
+@MainActor
 struct CutView: View {
     @Environment(AppModel.self) private var model
     @State private var pause = 0.4
@@ -120,6 +122,7 @@ struct CutView: View {
 
 // MARK: 02 Style
 
+@MainActor
 struct StyleView: View {
     @Environment(AppModel.self) private var model
     @State private var fxCategory = ""
@@ -302,7 +305,8 @@ struct StyleView: View {
         if name == "sticker" || name == "glass_widget" {
             c["params"] = ["text": .string(model.wordText(w).trimmingCharacters(in: .punctuationCharacters))]
         }
-        Task { await model.apply(c) }
+        let cmd = c
+        Task { await model.apply(cmd) }
     }
 
     func prefill() {
@@ -327,7 +331,8 @@ struct StyleView: View {
             default: c[k] = .string(v)
             }
         }
-        Task { await model.apply(c) }
+        let cmd = c
+        Task { await model.apply(cmd) }
     }
 
     func addBroll() {
@@ -344,6 +349,7 @@ struct StyleView: View {
     }
 }
 
+@MainActor
 struct LookCard: View {
     var key: String
     var info: Info
@@ -396,6 +402,7 @@ struct LookCard: View {
 
 // MARK: 03 Sound
 
+@MainActor
 struct SoundView: View {
     @Environment(AppModel.self) private var model
     @State private var preview: AVPlayer?
@@ -509,6 +516,7 @@ struct SoundView: View {
 
 // MARK: 04 Finish
 
+@MainActor
 struct FinishView: View {
     @Environment(AppModel.self) private var model
     @State private var platform = "reels"
