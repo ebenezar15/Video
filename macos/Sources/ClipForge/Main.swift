@@ -6,7 +6,9 @@ import SwiftUI
 enum Main {
     static func main() {
         let args = CommandLine.arguments
-        if let i = args.firstIndex(of: "--selftest") {
+        if args.contains("--install-engine") {
+            SelfTest.launchInstall()
+        } else if let i = args.firstIndex(of: "--selftest") {
             let shots = args.firstIndex(of: "--screenshots").flatMap { args.indices.contains($0 + 1) ? args[$0 + 1] : nil }
             _ = i
             SelfTest.launch(screenshots: shots)

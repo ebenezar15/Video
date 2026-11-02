@@ -17,6 +17,48 @@ enum SelfTest {
         app.run()
     }
 
+    /// `ClipForge --install-engine`: the first-run install exactly as a user gets it, then start that engine.
+    static func launchInstall() {
+        setvbuf(stdout, nil, _IOLBF, 0)
+        let app = NSApplication.shared
+        app.setActivationPolicy(.accessory)
+        Task { @MainActor in
+            let code = await install()
+            exit(code)
+        }
+        app.run()
+    }
+
+    @MainActor
+    static func install() async -> Int32 {
+        guard let src = AppModel.bundledEngine else {
+            print("FAIL  no engine source inside the app bundle")
+            return 1
+        }
+        guard let py = EngineProcess.findPython() else {
+            print("FAIL  no Python 3.10+ found")
+            return 1
+        }
+        print("Installing from \(src.path) with \(py.path)")
+        do {
+            try await EngineProcess.install(engineSource: src, python: py) { line in print(line, terminator: line.hasSuffix("\n") ? "" : "\n") }
+            let engine = EngineProcess()
+            defer { engine.stop() }
+            let url = try await engine.start(binary: EngineProcess.venvBinary, timeout: 90)
+            let meta = try await EngineClient(base: url).meta()
+            let untouched = !FileManager.default.fileExists(atPath: src.appendingPathComponent("build").path)
+                && ((try? FileManager.default.contentsOfDirectory(atPath: src.path)) ?? []).allSatisfy { !$0.hasSuffix(".egg-info") }
+            print(untouched ? "PASS  app bundle left untouched" : "FAIL  install wrote into the app bundle")
+            print("PASS  installed engine \(meta.version) runs (\(meta.effects.count) effects)")
+            print(untouched ? "INSTALL OK" : "INSTALL FAILED")
+            return untouched ? 0 : 1
+        } catch {
+            print("FAIL  \(error.localizedDescription)")
+            print("INSTALL FAILED")
+            return 1
+        }
+    }
+
     @MainActor
     static func run(screenshots: String?) async -> Int32 {
         var failures = 0

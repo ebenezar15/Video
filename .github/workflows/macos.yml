@@ -53,6 +53,13 @@ jobs:
         working-directory: macos
         run: ./scripts/build-app.sh
 
+      - name: First-run engine install (as a user gets it)
+        working-directory: macos
+        run: |
+          ./build/ClipForge.app/Contents/MacOS/ClipForge --install-engine 2>&1 | tee build/install.log | tail -25
+          grep -q "INSTALL OK" build/install.log
+          codesign --verify --deep --strict build/ClipForge.app && echo "PASS  app signature still valid"
+
       - name: App self-test (real engine, full edit, screenshots)
         working-directory: macos
         run: |

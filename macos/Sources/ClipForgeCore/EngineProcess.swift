@@ -95,11 +95,17 @@ public final class EngineProcess: @unchecked Sendable {
 
     /// Creates a private virtual environment and installs the engine shipped inside the app.
     public static func install(engineSource: URL, python: URL, log: @escaping @Sendable (String) -> Void) async throws {
-        try FileManager.default.createDirectory(at: appSupport, withIntermediateDirectories: true)
-        try await stream(python, ["-m", "venv", venv.path], log: log)
+        let fm = FileManager.default
+        try fm.createDirectory(at: appSupport, withIntermediateDirectories: true)
+        // build from a copy: setuptools writes into the source folder, which must not be the signed app bundle
+        let src = appSupport.appendingPathComponent("engine-src", isDirectory: true)
+        if fm.fileExists(atPath: src.path) { try fm.removeItem(at: src) }
+        try fm.copyItem(at: engineSource, to: src)
+        log("Copied engine source to \(src.path)")
+        try await stream(python, ["-m", "venv", "--clear", venv.path], log: log)
         let pip = venv.appendingPathComponent("bin/python3")
         try await stream(pip, ["-m", "pip", "install", "--upgrade", "pip"], log: log)
-        try await stream(pip, ["-m", "pip", "install", "\(engineSource.path)[all]"], log: log)
+        try await stream(pip, ["-m", "pip", "install", "\(src.path)[all]"], log: log)
         guard FileManager.default.isExecutableFile(atPath: venvBinary.path) else {
             throw EngineError.setup("Install finished but \(venvBinary.path) is missing.")
         }
