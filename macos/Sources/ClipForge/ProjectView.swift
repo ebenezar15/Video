@@ -87,7 +87,7 @@ struct PlayerPane: View {
     var body: some View {
         @Bindable var model = model
         VStack(alignment: .leading, spacing: 12) {
-            VideoPlayer(player: player)
+            PlayerView(player: player)
                 .aspectRatio(aspect, contentMode: .fit)
                 .background(Color.black)
                 .clipShape(RoundedRectangle(cornerRadius: 22))
@@ -181,5 +181,24 @@ struct PlanSheet: View {
         let args = c.filter { $0.key != "op" && $0.key != "why" }.sorted { $0.key < $1.key }
             .map { "\($0.key)=\($0.value.string ?? (($0.value.array?.compactMap(\.string))?.joined(separator: ",") ?? "…"))" }
         return ([c.op] + args).joined(separator: " ")
+    }
+}
+
+/// AppKit's AVPlayerView. SwiftUI's VideoPlayer needs an AVKit overlay library that SwiftPM-built apps
+/// don't load, which crashes with "failed to demangle superclass of VideoPlayerView".
+struct PlayerView: NSViewRepresentable {
+    let player: AVPlayer
+
+    func makeNSView(context: Context) -> AVPlayerView {
+        let view = AVPlayerView()
+        view.player = player
+        view.controlsStyle = .inline
+        view.videoGravity = .resizeAspect
+        view.showsFullScreenToggleButton = true
+        return view
+    }
+
+    func updateNSView(_ view: AVPlayerView, context: Context) {
+        if view.player !== player { view.player = player }
     }
 }

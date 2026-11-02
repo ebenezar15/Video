@@ -12,7 +12,8 @@ let package = Package(
         // Foundation only: models, engine client, engine install/launch, Claude Desktop config.
         .target(name: "ClipForgeCore"),
         // The SwiftUI app.
-        .executableTarget(name: "ClipForge", dependencies: ["ClipForgeCore"]),
+        .executableTarget(name: "ClipForge", dependencies: ["ClipForgeCore"],
+                          linkerSettings: [.linkedFramework("AVKit"), .linkedFramework("AVFoundation")]),
         .testTarget(name: "ClipForgeCoreTests", dependencies: ["ClipForgeCore"]),
     ]
 )
