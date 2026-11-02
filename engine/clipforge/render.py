@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -36,6 +37,18 @@ def ffmpeg_major() -> int:
     out = subprocess.run(["ffmpeg", "-hide_banner", "-version"], capture_output=True, text=True).stdout
     m = re.search(r"ffmpeg version n?(\d+)", out)
     return int(m.group(1)) if m else 6
+
+
+@functools.lru_cache(maxsize=None)
+def has_filter(name: str) -> bool:
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True).stdout
+    return re.search(rf"^\s*\S+\s+{re.escape(name)}\s", out, re.M) is not None
+
+
+def use_libass() -> bool:
+    """libass gives animated captions; Homebrew's ffmpeg lacks it, so captions are drawn with Pillow there."""
+    mode = os.environ.get("CLIPFORGE_CAPTIONS", "auto")
+    return mode == "ass" or (mode == "auto" and has_filter("subtitles"))
 
 
 def graph_args(path: str) -> list[str]:
@@ -247,10 +260,14 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
     if shot in ("faceless", "clips_text"):
         edit["captions"] = {**edit.get("captions", {}), "position": 0.55, "words_per_line": 2}
     ass = work / "captions.ass"
-    if p.words:
-        ass.write_text(cap_mod.build_ass(p.words, tl, edit, look, W, H), encoding="utf-8")
-    elif edit.get("hook", {}).get("title"):
-        ass.write_text(cap_mod.build_ass([], tl, edit, look, W, H), encoding="utf-8")
+    cap_track = None
+    if use_libass():
+        if p.words:
+            ass.write_text(cap_mod.build_ass(p.words, tl, edit, look, W, H), encoding="utf-8")
+        elif edit.get("hook", {}).get("title"):
+            ass.write_text(cap_mod.build_ass([], tl, edit, look, W, H), encoding="utf-8")
+    elif p.words or edit.get("hook", {}).get("title"):
+        cap_track = cap_mod.write_caption_track(p.words, tl, edit, look, W, H, work)
     placed_graphics = []
     for k, g in enumerate(p.edit.get("graphics", [])):
         d = float(g.get("duration") or graphics.TYPES[g["type"]]["duration"])
@@ -267,7 +284,12 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
     post = draws[:]
     if ass.exists():
         post.append("subtitles=filename=captions.ass:fontsdir=fonts")
-    fc.append(f"[{cur}]" + (",".join(post) if post else "null") + "[vout]")
+    if cap_track:
+        ci = add_input("-f", "concat", "-safe", "0", "-i", cap_track)
+        fc.append(f"[{cur}]" + (",".join(post) if post else "null") + "[vpre]")
+        fc.append(f"[{ci}:v]fps={FPS},format=rgba[capl];[vpre][capl]overlay=0:0:eof_action=pass:format=auto[vout]")
+    else:
+        fc.append(f"[{cur}]" + (",".join(post) if post else "null") + "[vout]")
 
     # sound: duck the music under speech, then normalise loudness
     music = p.edit.get("music")

@@ -2,7 +2,7 @@
 
 | Package | Version tested | Licence | Why |
 |---|---|---|---|
-| ffmpeg (system) | 6.1.1 | LGPL/GPL depending on build; invoked as a separate process | All decoding, filtering, encoding; libass for captions |
+| ffmpeg (system) | 6.1 (Linux), 8.x (Homebrew) | LGPL/GPL depending on build; invoked as a separate process | All decoding, filtering, encoding. Uses libass captions when the build has them; otherwise (Homebrew) captions are drawn with Pillow. ffmpeg 7+ reads the filter graph via `-/filter_complex` |
 | Pillow | 12.3 | MIT-CMU (HPND) | Cards, motion-graphic frames, post kit |
 | numpy | 2.5 | BSD-3 | Music and SFX synthesis |
 | pydantic | 2.x | MIT | Structured output schema for the Claude planner |

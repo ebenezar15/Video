@@ -328,3 +328,27 @@ def test_studio_api(project):
             urllib.request.urlopen(bad)
     finally:
         httpd.shutdown()
+
+
+def test_pillow_captions_without_libass(project, monkeypatch):
+    """Homebrew's ffmpeg has no libass; captions must still render."""
+    from clipforge import commands as C, render
+    from clipforge.captions import caption_states
+    from clipforge.looks import resolved
+    from clipforge.project import load_brand
+    monkeypatch.setenv("CLIPFORGE_CAPTIONS", "pillow")
+    C.apply(project, {"op": "auto_cut"})
+    C.apply(project, {"op": "set_hook_title", "text": "How we grew 40%"})
+    tl = render.timeline_for(project)
+    states = caption_states(project.words, tl, project.edit, resolved("creator", load_brand()))
+    assert abs(states[-1][1] - tl.duration) < 1e-6 and states[0][2]["hook"] == "How we grew 40%"
+    assert all(b > a for a, b, _ in states)
+    out = render.render(project, "tiny")
+    work = project.dir / "renders" / "work-tiny"
+    assert (work / "captions.ffconcat").exists() and not (work / "captions.ass").exists()
+    dur, w, h, _ = probe(out)
+    assert (w, h) == (270, 480) and abs(dur - tl.duration) < 0.15
+    # a frame with a caption has bright caption pixels in the lower band
+    frame = work / "f.png"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "4.4", "-i", str(out), "-frames:v", "1", str(frame)], check=True)
+    assert Image.open(frame).convert("L").crop((20, 300, 250, 400)).getextrema()[1] > 200
