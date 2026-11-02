@@ -60,7 +60,8 @@ jobs:
           CLIPFORGE_BIN="$(which clipforge)" \
           CLIPFORGE_SELFTEST_VIDEO="$RUNNER_TEMP/fx/talk.mp4" \
           CLIPFORGE_SELFTEST_WORDS="$RUNNER_TEMP/fx/talk.words.json" \
-            ./build/ClipForge.app/Contents/MacOS/ClipForge --selftest --screenshots build/screenshots
+            ./build/ClipForge.app/Contents/MacOS/ClipForge --selftest --screenshots build/screenshots 2>&1 | tee build/selftest.log
+          grep -q "SELFTEST OK" build/selftest.log
 
       - name: Screenshots in the log (for review without downloading artifacts)
         if: always()
@@ -68,9 +69,9 @@ jobs:
         run: |
           for f in screenshots/*.png; do
             [ -f "$f" ] || continue
-            sips -Z 1000 -s format jpeg -s formatOptions 55 "$f" --out "${f%.png}.jpg" >/dev/null
+            sips -Z 720 -s format jpeg -s formatOptions 40 "$f" --out "${f%.png}.jpg" >/dev/null
             echo "=====BEGIN $(basename "${f%.png}")====="
-            base64 -i "${f%.png}.jpg" | fold -w 160
+            base64 -i "${f%.png}.jpg" | fold -w 400
             echo "=====END $(basename "${f%.png}")====="
           done
 
@@ -91,3 +92,7 @@ jobs:
             --prerelease --target "$GITHUB_SHA" \
             --title "ClipForge for Mac (latest build)" \
             --notes "Built from ${GITHUB_SHA::7} on ${{ matrix.os }}. Unzip, move ClipForge.app to Applications, right-click → Open the first time (ad-hoc signed). Needs macOS 14+, plus ffmpeg and Python 3.10+ (brew install ffmpeg python). See macos/README.md."
+
+      - name: Self-test results (last, so they are at the end of the log)
+        if: always()
+        run: cat macos/build/selftest.log 2>/dev/null | grep -v "^SHOT" || echo "no self-test log"
