@@ -3,12 +3,26 @@ name: macOS app
 on:
   push:
     paths: ["macos/**", "engine/**", ".github/workflows/macos.yml"]
-  pull_request:
-    paths: ["macos/**", "engine/**", ".github/workflows/macos.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
-  build:
+  engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg fonts-dejavu-core
+      - run: pip install -e "engine[dev,faces]"
+      - working-directory: engine
+        run: python -m pytest -q
+
+  mac:
     runs-on: macos-15
     timeout-minutes: 45
     steps:
@@ -25,11 +39,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install engine
-        run: pip install -e "engine[dev,faces]"
-
-      - name: Engine tests
-        working-directory: engine
-        run: python -m pytest -q
+        run: pip install -e "engine[faces]"
 
       - name: Swift tests (ClipForgeCore)
         working-directory: macos
@@ -67,3 +77,13 @@ jobs:
           path: |
             macos/build/ClipForge.zip
             macos/build/screenshots
+
+      - name: Publish download (release "mac-latest")
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete mac-latest --yes --cleanup-tag || true
+          gh release create mac-latest macos/build/ClipForge.zip \
+            --prerelease --target "$GITHUB_SHA" \
+            --title "ClipForge for Mac (latest build)" \
+            --notes "Built from ${GITHUB_SHA::7} on macOS 15. Unzip, move ClipForge.app to Applications, right-click → Open the first time (ad-hoc signed). Needs macOS 14+, plus ffmpeg and Python 3.10+ (brew install ffmpeg python). See macos/README.md."
