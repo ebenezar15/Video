@@ -95,4 +95,4 @@ jobs:
 
       - name: Self-test results (last, so they are at the end of the log)
         if: always()
-        run: cat macos/build/selftest.log 2>/dev/null | grep -v "^SHOT" || echo "no self-test log"
+        run: cat macos/build/selftest.log 2>/dev/null || echo "no self-test log"

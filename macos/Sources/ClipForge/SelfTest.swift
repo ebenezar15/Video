@@ -7,6 +7,7 @@ import SwiftUI
 /// screen of the app to PNG. CI runs this on macOS. Needs CLIPFORGE_SELFTEST_VIDEO and CLIPFORGE_SELFTEST_WORDS.
 enum SelfTest {
     static func launch(screenshots: String?) {
+        setvbuf(stdout, nil, _IOLBF, 0)  // keep every line if the process dies while capturing screens
         let app = NSApplication.shared
         app.setActivationPolicy(.accessory)
         Task { @MainActor in
@@ -95,13 +96,16 @@ enum SelfTest {
             let servers = obj?["mcpServers"] as? [String: Any]
             check("Claude Desktop config keeps other servers", servers?["other"] != nil && servers?["clipforge"] != nil)
 
+            // the functional verdict is final here; screenshots below are best-effort extras
+            print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
             if let dir = screenshots {
                 await capture(client: c, meta: meta, state: st, to: URL(fileURLWithPath: dir))
+                print("SCREENSHOTS DONE")
             }
         } catch {
             check("self test ran without errors", false, error.localizedDescription + "\n" + String(engine.log.suffix(2000)))
+            print("SELFTEST FAILED (\(failures))")
         }
-        print(failures == 0 ? "SELFTEST OK" : "SELFTEST FAILED (\(failures))")
         return failures == 0 ? 0 : 1
     }
 
@@ -126,6 +130,7 @@ enum SelfTest {
         window.orderFrontRegardless()
 
         func shot(_ name: String) async {
+            print("SHOT  rendering \(name)")
             try? await Task.sleep(nanoseconds: 1_800_000_000)
             host.layoutSubtreeIfNeeded()
             guard let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) else { return }
