@@ -23,7 +23,11 @@ jobs:
         run: python -m pytest -q
 
   mac:
-    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-14]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
@@ -73,12 +77,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ClipForge-macOS
+          name: ClipForge-${{ matrix.os }}
           path: |
             macos/build/ClipForge.zip
             macos/build/screenshots
 
       - name: Publish download (release "mac-latest")
+        if: matrix.os == 'macos-15' || vars.PUBLISH_FROM == matrix.os
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
