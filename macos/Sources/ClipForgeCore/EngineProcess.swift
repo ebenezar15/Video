@@ -116,10 +116,24 @@ public final class EngineProcess: @unchecked Sendable {
     public struct InstallReport: Codable, Sendable {
         public var python: String
         public var missing: [String: String] = [:]   // extra -> what it is for
+        public var build: String? = nil               // BUILD_ID of the engine source it was installed from
         public var transcription: Bool { missing["whisper"] == nil }
     }
 
     public static var reportURL: URL { appSupport.appendingPathComponent("install-report.json") }
+
+    /// Fingerprint written by build-app.sh next to the bundled engine source.
+    public static func buildID(of engineSource: URL) -> String? {
+        (try? String(contentsOf: engineSource.appendingPathComponent("BUILD_ID"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// True when the app carries a different engine than the one installed in its private environment.
+    public static func needsUpdate(bundled engineSource: URL?) -> Bool {
+        guard let src = engineSource, let bundled = buildID(of: src),
+              FileManager.default.isExecutableFile(atPath: venvBinary.path) else { return false }
+        return lastReport()?.build != bundled
+    }
 
     public static func lastReport() -> InstallReport? {
         guard let d = try? Data(contentsOf: reportURL) else { return nil }
@@ -141,6 +155,7 @@ public final class EngineProcess: @unchecked Sendable {
         let py = venv.appendingPathComponent("bin/python3")
         let version = (try? run(py, ["-c", "import sys;print(sys.version.split()[0])"]))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "?"
         var report = InstallReport(python: version)
+        report.build = buildID(of: engineSource)
         try await stream(py, ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"], log: log)
         let pipArgs = ["-m", "pip", "install", "--prefer-binary", "--only-binary", binaryOnly]
         try await stream(py, pipArgs + [src.path], log: log)

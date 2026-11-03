@@ -19,6 +19,9 @@ cp "$BIN" "$APP/Contents/MacOS/ClipForge"
 # the engine source, installed into a private venv on first launch
 rsync -a --exclude '__pycache__' --exclude '*.egg-info' --exclude '.pytest_cache' --exclude 'tests' \
   "$ROOT/engine/" "$APP/Contents/Resources/engine/"
+# fingerprint of the bundled engine: the app reinstalls its private engine when this changes
+(cd "$APP/Contents/Resources/engine" && find . -type f | LC_ALL=C sort | xargs shasum -a 256 | shasum -a 256 | cut -c1-16) \
+  > "$APP/Contents/Resources/engine/BUILD_ID"
 
 # icon
 if python3 -c "import PIL" 2>/dev/null; then

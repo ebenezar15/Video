@@ -53,7 +53,9 @@ enum SelfTest {
                 && ((try? FileManager.default.contentsOfDirectory(atPath: src.path)) ?? []).allSatisfy { !$0.hasSuffix(".egg-info") }
             print(untouched ? "PASS  app bundle left untouched" : "FAIL  install wrote into the app bundle")
             print("PASS  installed engine \(meta.version) runs (\(meta.effects.count) effects)")
-            let ok = untouched && complete
+            let current = !EngineProcess.needsUpdate(bundled: src) && report.build != nil
+            print(current ? "PASS  install recorded engine build \(report.build ?? "")" : "FAIL  engine build not recorded")
+            let ok = untouched && complete && current
             print(ok ? "INSTALL OK" : "INSTALL FAILED")
             return ok ? 0 : 1
         } catch {

@@ -83,6 +83,12 @@ final class AppModel {
             phase = .needsEngine("ClipForge renders with ffmpeg, which is not installed. In Terminal run:\n\nbrew install ffmpeg\n\nthen press Try again.")
             return
         }
+        // a newer app brings a newer engine: refresh the private install once, automatically
+        if engineBinarySetting.isEmpty, EngineProcess.needsUpdate(bundled: Self.bundledEngine),
+           EngineProcess.engineBinary(explicit: nil) == EngineProcess.venvBinary {
+            await installEngine()
+            return
+        }
         guard let bin = EngineProcess.engineBinary(explicit: engineBinarySetting) else {
             phase = .needsEngine(Self.bundledEngine == nil
                 ? "The ClipForge engine was not found. Install it with pip install -e engine[all], or set its path in Settings."

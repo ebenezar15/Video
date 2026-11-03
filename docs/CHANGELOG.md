@@ -7,6 +7,8 @@
 - iPhone footage: portrait videos (rotation flag) are measured as shown; HDR (HLG/PQ) is tone-mapped to SDR.
 - Security: the local engine rejects requests from other websites (Origin) and DNS rebinding (Host).
 - Transcription reports progress; CI transcribes real speech (macOS `say`) with Whisper through the Mac app.
+- Transcription decodes audio with ffmpeg: faster-whisper 1.2.1's PyAV call broke with PyAV 19 (crash on Transcribe).
+- Mac app updates its private engine automatically when a newer app carries a newer engine (BUILD_ID fingerprint).
 
 ## 0.3.2 — Install fix (2026-11-03)
 - Fix "Failed to build 'av'": installs use ready-made builds only (`--prefer-binary --only-binary av,ctranslate2,…`),
