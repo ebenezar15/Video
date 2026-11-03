@@ -137,6 +137,17 @@ enum SelfTest {
             st = try await c.undo(st.id).state
             check("undo", st.history.count == before - 1)
 
+            if let speech = env["CLIPFORGE_SELFTEST_SPEECH"] {
+                // real on-device transcription (faster-whisper) of real speech, through the app's client
+                let sp = try await c.createProject(video: URL(fileURLWithPath: speech), shotType: "on_camera", name: "Speech")
+                _ = try await c.wait(job: try await c.transcribe(sp.id, language: "en", model: "tiny"))
+                let heard = try await c.project(sp.id).allWords
+                let text = heard.map(\.text).joined(separator: " ").lowercased()
+                let ordered = zip(heard, heard.dropFirst()).allSatisfy { $0.start <= $1.start && $0.end <= $1.end + 0.01 }
+                check("transcribes real speech with word timings", heard.count >= 8 && text.contains("story") && ordered,
+                      "\(heard.count) words: \(text.prefix(80))")
+            }
+
             let cfg = try ClaudeDesktop.merged(existing: Data(#"{"mcpServers":{"other":{"command":"x"}}}"#.utf8), binary: bin.path, home: home.path)
             let obj = try JSONSerialization.jsonObject(with: cfg) as? [String: Any]
             let servers = obj?["mcpServers"] as? [String: Any]

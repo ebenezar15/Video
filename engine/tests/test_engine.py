@@ -352,3 +352,87 @@ def test_pillow_captions_without_libass(project, monkeypatch):
     frame = work / "f.png"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", "4.4", "-i", str(out), "-frames:v", "1", str(frame)], check=True)
     assert Image.open(frame).convert("L").crop((20, 300, 250, 400)).getextrema()[1] > 200
+
+
+def test_transcript_longer_than_media_is_clipped():
+    """An imported transcript that runs past the end of the video must not produce negative segments."""
+    from clipforge.timeline import build
+    from clipforge.transcript import Word
+    ws = [Word(i, "word.", i * 1.0, i * 1.0 + 0.4) for i in range(20)]  # words to 19.4 s
+    tl = build(ws, {"deleted": [], "pause_max": 0.4}, media_duration=10.0)
+    assert all(s.dur > 0 for s in tl.segments)
+    assert 0 < tl.duration <= 10.0
+    assert max(tl.word_out) <= 9 and all(i in tl.word_out for i in tl.order)
+
+
+@pytest.mark.parametrize("hook", [False, True])
+def test_single_pass_render_for_many_cuts(project, monkeypatch, hook):
+    """Long recordings use one select pass per in-order run; audio and video must stay in sync."""
+    from clipforge import commands as C, render
+    monkeypatch.setattr(render, "SELECT_THRESHOLD", 0)
+    C.apply(project, {"op": "auto_cut"})
+    if hook:
+        C.apply(project, {"op": "move_hook", "start_id": 10, "end_id": 16})
+    tl = render.timeline_for(project)
+    assert len(render.select_groups(tl.segments)) == (2 if hook else 1)
+    out = render.render(project, "tiny")
+    streams = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration", "-of", "json",
+                                         str(out)], capture_output=True, text=True, check=True).stdout)["streams"]
+    d = {s["codec_type"]: float(s["duration"]) for s in streams}
+    assert abs(d["video"] - tl.duration) < 0.07 and abs(d["audio"] - tl.duration) < 0.07
+
+
+@pytest.fixture(scope="session")
+def phone_media(tmp_path_factory):
+    """A portrait phone clip (landscape pixels + rotation flag) and an HDR HLG clip, like iPhone footage."""
+    d = tmp_path_factory.mktemp("phone")
+    land = d / "land.mp4"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=640x360:r=30:d=3", "-f", "lavfi", "-i", "sine=d=3",
+                    "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", str(land)], check=True)
+    portrait = d / "portrait.mov"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-display_rotation:v:0", "90", "-i", str(land), "-c", "copy", str(portrait)], check=True)
+    hdr = d / "hdr.mov"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc2=s=640x360:r=30:d=3", "-f", "lavfi", "-i", "sine=d=3",
+                    "-c:v", "libx265", "-preset", "ultrafast", "-x265-params", "log-level=none", "-pix_fmt", "yuv420p10le",
+                    "-color_primaries", "bt2020", "-color_trc", "arib-std-b67", "-colorspace", "bt2020nc", "-c:a", "aac",
+                    "-shortest", str(hdr)], check=True)
+    return portrait, hdr
+
+
+def test_phone_portrait_and_hdr(home, phone_media):
+    from clipforge import render
+    from clipforge.project import Project
+    portrait, hdr = phone_media
+    p = Project.create(portrait)
+    assert (p.meta["width"], p.meta["height"], p.meta["rotation"] % 180) == (360, 640, 90)
+    h = Project.create(hdr)
+    assert h.meta["hdr"] and h.meta["transfer"] == "arib-std-b67"
+    out = render.render(h, "tiny")
+    assert "vsdr" in (h.dir / "renders" / "work-tiny" / "graph.txt").read_text()
+    assert probe(out)[1:3] == (270, 480)
+    f = Project.create(hdr, shot_type="faceless")  # no source picture used: the tone-map must not dangle
+    assert probe(render.render(f, "tiny"))[1:3] == (270, 480)
+
+
+def test_engine_rejects_other_sites(home):
+    """Web pages open in the browser must not be able to drive the local engine."""
+    from clipforge.server import serve
+    httpd = serve(0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    port = httpd.server_address[1]
+    base = f"http://127.0.0.1:{port}"
+
+    def status(path, method="GET", headers=None, body=None):
+        r = urllib.request.Request(base + path, data=body, method=method, headers=headers or {})
+        try:
+            return urllib.request.urlopen(r).status
+        except urllib.error.HTTPError as e:
+            return e.code
+    try:
+        assert status("/api/brand", "POST", {"Origin": "https://evil.example"}, b'{"handle": "@x"}') == 403
+        assert status("/api/meta", headers={"Host": f"evil.example:{port}"}) == 403
+        assert status("/api/meta") == 200
+        assert status("/api/meta", headers={"Host": f"localhost:{port}"}) == 200
+        assert status("/api/brand", "POST", {"Origin": f"http://127.0.0.1:{port}"}, b'{"handle": "@ok"}') == 200
+    finally:
+        httpd.shutdown()

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3 — Real-world fixes (2026-11-03)
+- Long recordings: many cuts render in one select pass per in-order run (work grows linearly, not frames × cuts);
+  cut points snap to the 30 fps grid so audio and video stay in sync across hundreds of cuts.
+- Transcripts that run past the end of the video no longer produce negative segments or empty renders.
+- iPhone footage: portrait videos (rotation flag) are measured as shown; HDR (HLG/PQ) is tone-mapped to SDR.
+- Security: the local engine rejects requests from other websites (Origin) and DNS rebinding (Host).
+- Transcription reports progress; CI transcribes real speech (macOS `say`) with Whisper through the Mac app.
+
 ## 0.3.2 — Install fix (2026-11-03)
 - Fix "Failed to build 'av'": installs use ready-made builds only (`--prefer-binary --only-binary av,ctranslate2,…`),
   so pip picks a compatible PyAV instead of compiling the newest one (e.g. PyAV 15.1 on macOS 13).

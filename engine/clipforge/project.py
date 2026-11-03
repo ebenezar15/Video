@@ -76,15 +76,24 @@ def save_brand(brand: dict) -> None:
 
 def probe(path: Path) -> dict:
     out = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type,width,height,r_frame_rate",
+        ["ffprobe", "-v", "error", "-show_entries",
+         "format=duration:stream=codec_type,width,height,r_frame_rate,color_transfer:stream_side_data=rotation:stream_tags=rotate",
          "-of", "json", str(path)], capture_output=True, text=True, check=True).stdout
     info = json.loads(out)
     v = next((s for s in info.get("streams", []) if s.get("codec_type") == "video"), {})
     has_audio = any(s.get("codec_type") == "audio" for s in info.get("streams", []))
     num, _, den = (v.get("r_frame_rate") or "30/1").partition("/")
     fps = float(num) / float(den or 1) if float(den or 1) else 30.0
-    return {"duration": float(info["format"].get("duration", 0)), "width": v.get("width"),
-            "height": v.get("height"), "fps": round(fps, 3), "has_audio": has_audio}
+    # phones store portrait video as landscape pixels plus a rotation flag; report what the viewer sees
+    rotation = next((int(float(sd["rotation"])) for sd in v.get("side_data_list", []) if "rotation" in sd),
+                    int(float((v.get("tags") or {}).get("rotate", 0) or 0)))
+    w, h = v.get("width"), v.get("height")
+    if rotation % 180 and w and h:
+        w, h = h, w
+    transfer = v.get("color_transfer") or ""
+    return {"duration": float(info["format"].get("duration", 0)), "width": w, "height": h, "fps": round(fps, 3),
+            "has_audio": has_audio, "rotation": rotation, "hdr": transfer in ("arib-std-b67", "smpte2084"),
+            "transfer": transfer}
 
 
 @dataclass

@@ -48,7 +48,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install engine
-        run: pip install -e "engine[faces]"
+        run: pip install --prefer-binary --only-binary av,ctranslate2,onnxruntime,tokenizers,opencv-python-headless -e "engine[all]"
 
       - name: Swift tests (ClipForgeCore)
         working-directory: macos
@@ -69,6 +69,10 @@ jobs:
         working-directory: macos
         run: |
           python ../engine/tests/fixtures/make_fixture.py "$RUNNER_TEMP/fx"
+          say -o "$RUNNER_TEMP/speech.aiff" "Pricing is a story, not a number. We tested three pricing pages, and the third one won by forty percent."
+          ffmpeg -v error -y -f lavfi -i color=c=0x334455:s=1280x720:r=30 -i "$RUNNER_TEMP/speech.aiff" -shortest \
+            -c:v libx264 -pix_fmt yuv420p -c:a aac "$RUNNER_TEMP/speech.mp4"
+          CLIPFORGE_SELFTEST_SPEECH="$RUNNER_TEMP/speech.mp4" \
           CLIPFORGE_BIN="$(which clipforge)" \
           CLIPFORGE_SELFTEST_VIDEO="$RUNNER_TEMP/fx/talk.mp4" \
           CLIPFORGE_SELFTEST_WORDS="$RUNNER_TEMP/fx/talk.words.json" \

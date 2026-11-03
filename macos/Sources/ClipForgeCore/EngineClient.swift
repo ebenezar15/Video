@@ -96,8 +96,9 @@ public struct EngineClient: Sendable {
         return r.path
     }
 
-    public func transcribe(_ id: String, language: String?) async throws -> String {
-        let r: JobRef = try await post("/api/projects/\(Self.q(id))/transcribe", json: ["language": .string(language ?? "")])
+    public func transcribe(_ id: String, language: String?, model: String = "small") async throws -> String {
+        let r: JobRef = try await post("/api/projects/\(Self.q(id))/transcribe",
+                                       json: ["language": .string(language ?? ""), "model": .string(model)])
         return r.job
     }
 

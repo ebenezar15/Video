@@ -32,6 +32,25 @@ class RenderError(RuntimeError):
     pass
 
 
+SELECT_THRESHOLD = 24
+
+
+def select_groups(segs: list[Segment]) -> list[list[Segment]]:
+    """Runs of segments that move forward through the source (a cold-open hook starts a new run)."""
+    groups: list[list[Segment]] = []
+    for sg in segs:
+        if groups and sg.src_start >= groups[-1][-1].src_end - 1e-6:
+            groups[-1].append(sg)
+        else:
+            groups.append([sg])
+    return groups
+
+
+def span_expr(group: list[Segment]) -> str:
+    """Half-open spans, so a frame on a cut point is counted exactly once."""
+    return "+".join(f"gte(t,{sg.src_start:.4f})*lt(t,{sg.src_end:.4f})" for sg in group)
+
+
 @functools.lru_cache(maxsize=1)
 def ffmpeg_major() -> int:
     out = subprocess.run(["ffmpeg", "-hide_banner", "-version"], capture_output=True, text=True).stdout
@@ -43,6 +62,14 @@ def ffmpeg_major() -> int:
 def has_filter(name: str) -> bool:
     out = subprocess.run(["ffmpeg", "-hide_banner", "-filters"], capture_output=True, text=True).stdout
     return re.search(rf"^\s*\S+\s+{re.escape(name)}\s", out, re.M) is not None
+
+
+def hdr_to_sdr() -> str:
+    """Tone-map HDR (iPhone HLG, PQ) to standard video. zscale+tonemap where ffmpeg has them, else primaries only."""
+    if has_filter("zscale") and has_filter("tonemap"):
+        return ("zscale=t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,"
+                "zscale=t=bt709:m=bt709:r=tv,format=yuv420p")
+    return "colorspace=all=bt709:iall=bt2020:fast=1,format=yuv420p"
 
 
 def use_libass() -> bool:
@@ -124,8 +151,20 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
     segs = tl.segments
     N = len(segs)
 
+    # Few cuts: one trim per segment (with short audio fades). Many cuts (long recordings): one select pass per
+    # run of in-order segments, so the work does not grow with frames x cuts.
+    single_pass = N > SELECT_THRESHOLD
+    groups = select_groups(segs) if single_pass else []
+
     # audio: trims of the source, in edit order
-    if p.meta.get("has_audio", True):
+    if p.meta.get("has_audio", True) and single_pass:
+        G = len(groups)
+        # 32-sample packets: cut points on the 1/30 s grid fall exactly on packet edges at 48 kHz
+        fc.append(f"[{src}:a]aresample=48000,asetnsamples=n=32:p=0" + (f",asplit={G}" + "".join(f"[ag{k}]" for k in range(G)) if G > 1 else "[ag0]"))
+        for k, g in enumerate(groups):
+            fc.append(f"[ag{k}]aselect='{span_expr(g)}',asetpts=N/SR/TB[agt{k}]")
+        fc.append("".join(f"[agt{k}]" for k in range(G)) + f"concat=n={G}:v=0:a=1[acat]")
+    elif p.meta.get("has_audio", True):
         fc.append(f"[{src}:a]asplit={N}" + "".join(f"[as{i}]" for i in range(N)) if N > 1 else f"[{src}:a]anull[as0]")
         for i, s in enumerate(segs):
             fade = min(0.015, s.dur / 4)
@@ -154,10 +193,21 @@ def render(p: Project, quality: str = "preview", progress: Callable[[float], Non
                       f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[b{k}]")
         fc.append("".join(f"[b{k}]" for k in range(len(cuts) - 1)) + f"concat=n={len(cuts) - 1}:v=1:a=0,format=yuv420p[vbase]")
     else:
-        fc.append(f"[{src}:v]split={N}" + "".join(f"[vs{i}]" for i in range(N)) if N > 1 else f"[{src}:v]null[vs0]")
-        for i, s in enumerate(segs):
-            fc.append(f"[vs{i}]trim=start={s.src_start}:end={s.src_end},setpts=PTS-STARTPTS,fps={FPS}[vt{i}]")
-        fc.append("".join(f"[vt{i}]" for i in range(N)) + f"concat=n={N}:v=1:a=0[vcat]")
+        vsrc = f"{src}:v"
+        if p.meta.get("hdr"):  # only where the source picture is used, or the filter output would dangle
+            fc.append(f"[{src}:v]{hdr_to_sdr()}[vsdr]")
+            vsrc = "vsdr"
+        if single_pass:
+            G = len(groups)
+            fc.append(f"[{vsrc}]fps={FPS}" + (f",split={G}" + "".join(f"[vg{k}]" for k in range(G)) if G > 1 else "[vg0]"))
+            for k, g in enumerate(groups):
+                fc.append(f"[vg{k}]select='{span_expr(g)}',setpts=N/{FPS}/TB[vgt{k}]")
+            fc.append("".join(f"[vgt{k}]" for k in range(G)) + f"concat=n={G}:v=1:a=0[vcat]")
+        else:
+            fc.append(f"[{vsrc}]split={N}" + "".join(f"[vs{i}]" for i in range(N)) if N > 1 else f"[{vsrc}]null[vs0]")
+            for i, s in enumerate(segs):
+                fc.append(f"[vs{i}]trim=start={s.src_start}:end={s.src_end},setpts=PTS-STARTPTS,fps={FPS}[vt{i}]")
+            fc.append("".join(f"[vt{i}]" for i in range(N)) + f"concat=n={N}:v=1:a=0[vcat]")
         if p.edit.get("fit") == "blur":
             fc.append(f"[vcat]split[bgs][fgs];[bgs]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},gblur=sigma=40[bg];"
                       f"[fgs]scale={W}:{H}:force_original_aspect_ratio=decrease[fg];[bg][fg]overlay=(W-w)/2:(H-h)/2,setsar=1,format=yuv420p[vbase]")

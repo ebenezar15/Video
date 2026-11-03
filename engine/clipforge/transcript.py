@@ -55,7 +55,7 @@ def import_transcript(path: Path) -> list[Word]:
     return out
 
 
-def transcribe(media: Path, language: str | None = None, model: str = "small") -> list[Word]:
+def transcribe(media: Path, language: str | None = None, model: str = "small", progress=None) -> list[Word]:
     """Local, on-device transcription with word timestamps (faster-whisper)."""
     try:
         from faster_whisper import WhisperModel
@@ -66,9 +66,12 @@ def transcribe(media: Path, language: str | None = None, model: str = "small") -
             "(Python 3.12 has the widest support). Or import a transcript JSON with words and timings."
         ) from e
     wm = WhisperModel(model, device="auto", compute_type="auto")
-    segments, _info = wm.transcribe(str(media), language=language, word_timestamps=True, vad_filter=True)
+    segments, info = wm.transcribe(str(media), language=language, word_timestamps=True, vad_filter=True)
     out: list[Word] = []
+    total = float(getattr(info, "duration", 0) or 0)
     for seg in segments:
+        if progress and total:
+            progress(min(0.99, seg.end / total))
         for w in seg.words or []:
             text = w.word.strip()
             if text:

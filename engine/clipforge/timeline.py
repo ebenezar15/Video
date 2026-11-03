@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from .transcript import Word
 
 PAD = 0.06
+GRID = 30  # output frame rate; cut points are snapped to it
 
 
 @dataclass
@@ -68,11 +69,17 @@ def build(words: list[Word], edit: dict, media_duration: float | None = None) ->
         # pad each cut, but never past halfway into the neighbouring word or gap
         s = max(first.start - min(PAD, max(0.0, first.start - before) / 2), 0.0)
         e = min(last.end + min(PAD, max(0.0, after - last.end) / 2), media_duration or 1e9)
+        # cut on the 30 fps frame grid so audio and video drop exactly the same spans (no drift over many cuts)
+        s, e = round(s * GRID) / GRID, round(e * GRID) / GRID
+        if e - s < 1 / GRID:  # words past the end of the media (mismatched or overlong transcript)
+            continue
         seg = Segment(round(s, 3), round(e, 3), round(out, 3))
         tl.segments.append(seg)
         for w in run:
-            tl.word_out[w.id] = (round(out + w.start - s, 3), round(out + w.end - s, 3))
+            if w.start < e:
+                tl.word_out[w.id] = (round(out + w.start - s, 3), round(out + min(w.end, e) - s, 3))
         out += seg.dur
+    tl.order = [i for i in tl.order if i in tl.word_out]
     return tl
 
 

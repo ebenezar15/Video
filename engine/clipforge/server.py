@@ -128,8 +128,21 @@ class Handler(BaseHTTPRequestHandler):
                     return
                 left -= len(chunk)
 
+    def _trusted(self) -> bool:
+        """Only this machine's own pages and apps may talk to the engine.
+        Host must be the loopback address (defeats DNS rebinding); a browser Origin, if sent, must be ours (defeats
+        cross-site requests from pages you happen to have open)."""
+        port = self.server.server_address[1]
+        ours = {f"127.0.0.1:{port}", f"localhost:{port}"}
+        if (self.headers.get("Host") or "").lower() not in ours:
+            return False
+        origin = (self.headers.get("Origin") or "").lower()
+        return not origin or origin in {f"http://{h}" for h in ours}
+
     # routing -------------------------------------------------------------------------
     def do_GET(self):
+        if not self._trusted():
+            return self._err("Forbidden", 403)
         u = urlparse(self.path)
         parts = [unquote(x) for x in u.path.strip("/").split("/") if x]
         try:
@@ -167,6 +180,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._err(str(e), 404)
 
     def do_POST(self):
+        if not self._trusted():
+            return self._err("Forbidden", 403)
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         parts = [unquote(x) for x in u.path.strip("/").split("/") if x]
@@ -204,7 +219,7 @@ class Handler(BaseHTTPRequestHandler):
                 b = self._jbody()
                 def job(prog):
                     pp = Project.load(pid)
-                    pp.set_words(transcribe(pp.source, b.get("language") or None, b.get("model", "small")))
+                    pp.set_words(transcribe(pp.source, b.get("language") or None, b.get("model", "small"), prog))
                     return {"words": len(pp.words)}
                 return self._json({"job": run_job("transcribe", job)})
             if action == "render":

@@ -107,7 +107,7 @@ final class AppModel {
             return
         }
         guard let py = EngineProcess.findPython() else {
-            phase = .needsEngine("Python 3.10 or newer is needed. In Terminal run:\n\nbrew install python\n\nthen press Try again.")
+            phase = .needsEngine("Python 3.10 or newer is needed (3.12 works best). In Terminal run:\n\nbrew install python@3.12\n\nthen press Try again.")
             return
         }
         phase = .installing
