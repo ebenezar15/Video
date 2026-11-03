@@ -55,6 +55,21 @@ def import_transcript(path: Path) -> list[Word]:
     return out
 
 
+def decode_audio(media: Path, rate: int = 16000):
+    """Mono float32 samples at `rate` Hz, decoded by ffmpeg (what Whisper models expect)."""
+    import subprocess
+
+    import numpy as np
+    out = subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-i", str(media), "-vn", "-ac", "1", "-ar", str(rate),
+                          "-f", "f32le", "-"], capture_output=True, check=False)
+    if out.returncode != 0:
+        raise RuntimeError(f"Could not read audio from {Path(media).name}: {out.stderr.decode(errors='ignore')[-300:]}")
+    audio = np.frombuffer(out.stdout, dtype=np.float32)
+    if audio.size == 0:
+        raise RuntimeError(f"{Path(media).name} has no audio to transcribe.")
+    return audio
+
+
 def transcribe(media: Path, language: str | None = None, model: str = "small", progress=None) -> list[Word]:
     """Local, on-device transcription with word timestamps (faster-whisper)."""
     try:
@@ -66,7 +81,8 @@ def transcribe(media: Path, language: str | None = None, model: str = "small", p
             "(Python 3.12 has the widest support). Or import a transcript JSON with words and timings."
         ) from e
     wm = WhisperModel(model, device="auto", compute_type="auto")
-    segments, info = wm.transcribe(str(media), language=language, word_timestamps=True, vad_filter=True)
+    # hand Whisper decoded samples: its own PyAV-based decoder breaks whenever PyAV changes its API
+    segments, info = wm.transcribe(decode_audio(media), language=language, word_timestamps=True, vad_filter=True)
     out: list[Word] = []
     total = float(getattr(info, "duration", 0) or 0)
     for seg in segments:

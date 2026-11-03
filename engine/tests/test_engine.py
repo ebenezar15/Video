@@ -436,3 +436,11 @@ def test_engine_rejects_other_sites(home):
         assert status("/api/brand", "POST", {"Origin": f"http://127.0.0.1:{port}"}, b'{"handle": "@ok"}') == 200
     finally:
         httpd.shutdown()
+
+
+def test_decode_audio_for_whisper(fixture_media):
+    """Transcription feeds Whisper samples decoded by ffmpeg (not PyAV, whose API changes broke faster-whisper)."""
+    from clipforge.transcript import decode_audio
+    video, _ = fixture_media
+    a = decode_audio(video)
+    assert a.dtype.name == "float32" and abs(a.size / 16000 - 11.5) < 0.1 and 0.05 < float(abs(a).max()) <= 1.0
