@@ -69,7 +69,9 @@ struct CutView: View {
         VStack(alignment: .leading, spacing: 14) {
             if model.state?.transcribed != true {
                 Panel(title: "First, the words",
-                      subtitle: "Transcription runs on this Mac with word timings. Or import a transcript JSON (Whisper or ClipForge).") {
+                      subtitle: EngineProcess.lastReport()?.transcription == false
+                        ? "On-device transcription isn't installed on this Mac (no ready-made build for Python \(EngineProcess.lastReport()?.python ?? "")). Import a transcript JSON, or install Python 3.12 (brew install python@3.12) and choose Settings → Engine → Reinstall Engine."
+                        : "Transcription runs on this Mac with word timings. Or import a transcript JSON (Whisper or ClipForge).") {
                     HStack {
                         Picker("Language", selection: $language) {
                             Text("Auto-detect").tag("")

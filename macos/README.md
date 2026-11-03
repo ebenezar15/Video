@@ -22,7 +22,7 @@ Requirements: macOS 14 or later, ffmpeg and Python 3.10+ (`brew install ffmpeg p
    `~/Library/Application Support/ClipForge` and installs the engine bundled inside the app. This takes a few
    minutes once.
 
-If you already installed the engine with `pip install -e engine[all]`, the app finds `clipforge` on your PATH and
+If you already installed the engine with `pip install --prefer-binary --only-binary av,ctranslate2,onnxruntime,tokenizers,opencv-python-headless -e engine[all]`, the app finds `clipforge` on your PATH and
 skips the install. You can also set a custom engine path in **Settings → Engine**.
 
 ## Use

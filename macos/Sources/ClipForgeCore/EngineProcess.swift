@@ -50,21 +50,36 @@ public final class EngineProcess: @unchecked Sendable {
         return which("clipforge")
     }
 
-    /// A Python 3.10+ interpreter (macOS's /usr/bin/python3 is often 3.9, so it is checked last).
+    /// Preference among Python versions: the ones every dependency ships ready-made builds for come first.
+    /// Lower is better; nil means unsupported (3.9 and older, which is what /usr/bin/python3 often is).
+    public static func pythonRank(major: Int, minor: Int) -> Int? {
+        guard major == 3, minor >= 10 else { return nil }
+        return [12: 0, 13: 1, 11: 2, 10: 3][minor] ?? 10 + minor
+    }
+
+    /// The best Python 3.10+ on this Mac (Homebrew, python.org or PATH).
     public static func findPython() -> URL? {
-        let names = ["python3.13", "python3.12", "python3.11", "python3.10", "python3"]
-        for dir in childPath().split(separator: ":") {
+        var dirs = childPath().split(separator: ":").map(String.init)
+        let framework = "/Library/Frameworks/Python.framework/Versions"
+        if let versions = try? FileManager.default.contentsOfDirectory(atPath: framework) {
+            dirs += versions.map { "\(framework)/\($0)/bin" }
+        }
+        let names = ["python3.12", "python3.13", "python3.11", "python3.10", "python3.14", "python3.15", "python3"]
+        var best: (rank: Int, url: URL)?
+        var seen = Set<String>()
+        for dir in dirs {
             for n in names {
-                let u = URL(fileURLWithPath: String(dir)).appendingPathComponent(n)
+                let u = URL(fileURLWithPath: dir).appendingPathComponent(n)
                 guard FileManager.default.isExecutableFile(atPath: u.path) else { continue }
-                if let v = try? run(u, ["-c", "import sys;print('%d.%d' % sys.version_info[:2])"]),
-                   let minor = Int(v.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ".").last ?? ""),
-                   v.hasPrefix("3."), minor >= 10 {
-                    return u
-                }
+                let real = u.resolvingSymlinksInPath().path
+                guard seen.insert(real).inserted,
+                      let v = try? run(u, ["-c", "import sys;print('%d.%d' % sys.version_info[:2])"]) else { continue }
+                let parts = v.trimmingCharacters(in: .whitespacesAndNewlines).split(separator: ".").compactMap { Int($0) }
+                guard parts.count == 2, let rank = pythonRank(major: parts[0], minor: parts[1]) else { continue }
+                if best == nil || rank < best!.rank { best = (rank, u) }
             }
         }
-        return nil
+        return best?.url
     }
 
     public static var ffmpeg: URL? { which("ffmpeg") }
@@ -93,8 +108,28 @@ public final class EngineProcess: @unchecked Sendable {
 
     // MARK: install
 
+    /// Packages that must never be compiled on the user's Mac (they need a full C/C++ toolchain and ffmpeg headers).
+    /// With these binary-only, pip picks the newest version that has a ready-made build for this Mac and Python.
+    public static let binaryOnly = "av,ctranslate2,onnxruntime,tokenizers,opencv-python-headless,numpy,pillow,pydantic-core"
+
+    /// What an install managed to set up. The core engine is required; the extras are optional.
+    public struct InstallReport: Codable, Sendable {
+        public var python: String
+        public var missing: [String: String] = [:]   // extra -> what it is for
+        public var transcription: Bool { missing["whisper"] == nil }
+    }
+
+    public static var reportURL: URL { appSupport.appendingPathComponent("install-report.json") }
+
+    public static func lastReport() -> InstallReport? {
+        guard let d = try? Data(contentsOf: reportURL) else { return nil }
+        return try? JSONDecoder().decode(InstallReport.self, from: d)
+    }
+
     /// Creates a private virtual environment and installs the engine shipped inside the app.
-    public static func install(engineSource: URL, python: URL, log: @escaping @Sendable (String) -> Void) async throws {
+    /// Core first (required), then each optional extra on its own, so one missing build never blocks the app.
+    @discardableResult
+    public static func install(engineSource: URL, python: URL, log: @escaping @Sendable (String) -> Void) async throws -> InstallReport {
         let fm = FileManager.default
         try fm.createDirectory(at: appSupport, withIntermediateDirectories: true)
         // build from a copy: setuptools writes into the source folder, which must not be the signed app bundle
@@ -103,12 +138,26 @@ public final class EngineProcess: @unchecked Sendable {
         try fm.copyItem(at: engineSource, to: src)
         log("Copied engine source to \(src.path)")
         try await stream(python, ["-m", "venv", "--clear", venv.path], log: log)
-        let pip = venv.appendingPathComponent("bin/python3")
-        try await stream(pip, ["-m", "pip", "install", "--upgrade", "pip"], log: log)
-        try await stream(pip, ["-m", "pip", "install", "\(src.path)[all]"], log: log)
-        guard FileManager.default.isExecutableFile(atPath: venvBinary.path) else {
+        let py = venv.appendingPathComponent("bin/python3")
+        let version = (try? run(py, ["-c", "import sys;print(sys.version.split()[0])"]))?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "?"
+        var report = InstallReport(python: version)
+        try await stream(py, ["-m", "pip", "install", "--upgrade", "pip", "setuptools", "wheel"], log: log)
+        let pipArgs = ["-m", "pip", "install", "--prefer-binary", "--only-binary", binaryOnly]
+        try await stream(py, pipArgs + [src.path], log: log)
+        guard fm.isExecutableFile(atPath: venvBinary.path) else {
             throw EngineError.setup("Install finished but \(venvBinary.path) is missing.")
         }
+        for (extra, purpose) in [("faces", "face-aware pop-up placement"), ("whisper", "on-device transcription")] {
+            do {
+                try await stream(py, pipArgs + ["\(src.path)[\(extra)]"], log: log)
+            } catch {
+                report.missing[extra] = purpose
+                log("NOTE: \(purpose) could not be installed for Python \(version) on this Mac. ClipForge works without it."
+                    + (extra == "whisper" ? " Import a transcript instead, or install Python 3.12 (brew install python@3.12) and choose Reinstall Engine." : ""))
+            }
+        }
+        if let d = try? JSONEncoder().encode(report) { try? d.write(to: reportURL) }
+        return report
     }
 
     static func stream(_ exe: URL, _ args: [String], log: @escaping @Sendable (String) -> Void) async throws {

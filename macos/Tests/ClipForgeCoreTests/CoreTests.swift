@@ -95,4 +95,16 @@ final class CoreTests: XCTestCase {
         let c = EngineClient(base: URL(string: "http://127.0.0.1:9")!)
         XCTAssertEqual(c.fileURL("p 1", "post/cover image.jpg").absoluteString, "http://127.0.0.1:9/files/p%201/post/cover%20image.jpg")
     }
+
+    func testPythonPreferenceFavoursBestSupportedVersions() {
+        XCTAssertNil(EngineProcess.pythonRank(major: 3, minor: 9))   // macOS /usr/bin/python3 is often 3.9
+        let order = [10, 11, 12, 13, 14, 15].sorted { EngineProcess.pythonRank(major: 3, minor: $0)! < EngineProcess.pythonRank(major: 3, minor: $1)! }
+        XCTAssertEqual(order, [12, 13, 11, 10, 14, 15])
+    }
+
+    func testHeavyPackagesAreNeverCompiled() {
+        for pkg in ["av", "ctranslate2", "onnxruntime", "tokenizers", "opencv-python-headless"] {
+            XCTAssertTrue(EngineProcess.binaryOnly.split(separator: ",").contains(Substring(pkg)), pkg)
+        }
+    }
 }

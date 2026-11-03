@@ -18,7 +18,7 @@ app, MCP server, CLI, Claude Code skill). The native SwiftUI app in `macos/` is 
 - `schemas/timeline.v1.json`: the EDL contract (everything reads and writes it)
 
 ## Commands
-- Install: `pip install -e "./engine[all,dev]"` (needs ffmpeg with libass)
+- Install: `pip install --prefer-binary --only-binary av,ctranslate2,onnxruntime,tokenizers,opencv-python-headless -e "./engine[all,dev]"` (needs ffmpeg with libass)
 - Test: `cd engine && python -m pytest` (renders real video; ~1 min)
 - Studio: `clipforge studio` → http://127.0.0.1:8765
 - MCP: `clipforge mcp` (see `docs/MCP.md`)

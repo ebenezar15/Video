@@ -18,6 +18,11 @@ struct SettingsView: View {
                     LabeledContent("Status", value: model.phase == .ready ? "Running at \(model.client?.base.absoluteString ?? "")" : "\(model.phase)")
                     LabeledContent("ffmpeg", value: EngineProcess.ffmpeg?.path ?? "Not found. Run: brew install ffmpeg")
                     LabeledContent("Engine", value: EngineProcess.engineBinary(explicit: binary)?.path ?? "Not installed")
+                    if let r = EngineProcess.lastReport() {
+                        LabeledContent("Python", value: r.python)
+                        LabeledContent("Optional parts", value: r.missing.isEmpty ? "All installed"
+                            : "Missing: " + r.missing.values.sorted().joined(separator: ", ") + ". Install Python 3.12 (brew install python@3.12), then Reinstall Engine.")
+                    }
                     TextField("Custom engine path (optional)", text: $binary, prompt: Text("/path/to/clipforge"))
                     TextField("Projects folder (optional)", text: $home, prompt: Text("~/ClipForge"))
                     HStack {

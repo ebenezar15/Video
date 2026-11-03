@@ -61,8 +61,9 @@ def transcribe(media: Path, language: str | None = None, model: str = "small") -
         from faster_whisper import WhisperModel
     except ImportError as e:  # pragma: no cover - depends on optional extra
         raise RuntimeError(
-            "Local transcription needs the 'whisper' extra: pip install 'clipforge[whisper]'. "
-            "Or import a transcript JSON with words and timings."
+            "On-device transcription is not installed. Install it with ready-made builds only: "
+            "pip install --prefer-binary --only-binary av,ctranslate2,onnxruntime,tokenizers 'clipforge[whisper]' "
+            "(Python 3.12 has the widest support). Or import a transcript JSON with words and timings."
         ) from e
     wm = WhisperModel(model, device="auto", compute_type="auto")
     segments, _info = wm.transcribe(str(media), language=language, word_timestamps=True, vad_filter=True)

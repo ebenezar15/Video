@@ -29,8 +29,14 @@ brew install ffmpeg            # macOS; or apt install ffmpeg
 ```
 
 ```bash
-pip install -e "./engine[all]"  # faster-whisper for transcription, OpenCV for face-aware pop-ups
+pip install --prefer-binary --only-binary av,ctranslate2,onnxruntime,tokenizers,opencv-python-headless -e "./engine[all]"  # faster-whisper for transcription, OpenCV for face-aware pop-ups
 ```
+
+### If install fails with "Failed to build 'av'" (or ctranslate2, onnxruntime)
+
+pip tried to compile a package because the newest version has no ready-made build for your Mac or Python. Keep the
+`--only-binary` flags above: pip then picks the newest version that does have one. Python 3.12 has the widest support
+(`brew install python@3.12`). Transcription is optional: without it, import a transcript JSON and everything else works.
 
 ## Use it
 

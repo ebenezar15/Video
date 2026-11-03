@@ -41,7 +41,10 @@ enum SelfTest {
         }
         print("Installing from \(src.path) with \(py.path)")
         do {
-            try await EngineProcess.install(engineSource: src, python: py) { line in print(line, terminator: line.hasSuffix("\n") ? "" : "\n") }
+            let report = try await EngineProcess.install(engineSource: src, python: py) { line in print(line, terminator: line.hasSuffix("\n") ? "" : "\n") }
+            let complete = report.missing.isEmpty && EngineProcess.lastReport()?.python == report.python
+            print(complete ? "PASS  transcription and face detection installed (Python \(report.python))"
+                           : "FAIL  missing optional parts: \(report.missing)")
             let engine = EngineProcess()
             defer { engine.stop() }
             let url = try await engine.start(binary: EngineProcess.venvBinary, timeout: 90)
@@ -50,8 +53,9 @@ enum SelfTest {
                 && ((try? FileManager.default.contentsOfDirectory(atPath: src.path)) ?? []).allSatisfy { !$0.hasSuffix(".egg-info") }
             print(untouched ? "PASS  app bundle left untouched" : "FAIL  install wrote into the app bundle")
             print("PASS  installed engine \(meta.version) runs (\(meta.effects.count) effects)")
-            print(untouched ? "INSTALL OK" : "INSTALL FAILED")
-            return untouched ? 0 : 1
+            let ok = untouched && complete
+            print(ok ? "INSTALL OK" : "INSTALL FAILED")
+            return ok ? 0 : 1
         } catch {
             print("FAIL  \(error.localizedDescription)")
             print("INSTALL FAILED")

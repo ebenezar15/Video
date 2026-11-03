@@ -113,10 +113,13 @@ final class AppModel {
         phase = .installing
         installLog = ""
         do {
-            try await EngineProcess.install(engineSource: src, python: py) { line in
+            let report = try await EngineProcess.install(engineSource: src, python: py) { line in
                 Task { @MainActor in self.installLog += line.hasSuffix("\n") ? line : line + "\n" }
             }
             await boot()
+            if !report.missing.isEmpty {
+                say("Installed. Not available on this Mac yet: \(report.missing.values.sorted().joined(separator: ", ")). See Settings → Engine.")
+            }
         } catch {
             phase = .failed(error.localizedDescription + "\n\n" + String(installLog.suffix(2000)))
         }

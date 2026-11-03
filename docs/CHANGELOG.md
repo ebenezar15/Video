@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.2 — Install fix (2026-11-03)
+- Fix "Failed to build 'av'": installs use ready-made builds only (`--prefer-binary --only-binary av,ctranslate2,…`),
+  so pip picks a compatible PyAV instead of compiling the newest one (e.g. PyAV 15.1 on macOS 13).
+- Mac app installs in stages: core engine first, then transcription and face detection as optional parts; a missing
+  part no longer blocks the app, and Settings/Cut say what is missing and how to add it. Prefers Python 3.12.
+
 ## 0.3.1 — Mac app ships (2026-11-02)
 - Downloadable build: https://github.com/ebenezar15/Video/releases/download/mac-latest/ClipForge.zip (CI on macOS 14
   builds, unit-tests, self-tests against the real engine, renders every screen, then publishes).
